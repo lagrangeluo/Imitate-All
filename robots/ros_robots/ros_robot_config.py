@@ -1,11 +1,10 @@
-from functools import partial
-
 import numpy as np
-from geometry_msgs.msg import Pose
-from sensor_msgs.msg import JointState
+from functools import partial
 from std_msgs.msg import Float32MultiArray, Int32
-
+from sensor_msgs.msg import JointState
+from geometry_msgs.msg import Pose
 from ros_tools import Lister
+
 
 # state and action types
 JOINT = "joint"

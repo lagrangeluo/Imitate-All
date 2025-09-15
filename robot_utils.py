@@ -1,20 +1,15 @@
-import os
+import cv2
 import time
 from collections import deque
+import numpy as np
 from threading import Thread
 from typing import Union
 
-import cv2
-import numpy as np
-
 
 class ImageRecorderRos:
-    def __init__(
-        self, camera_names, is_debug=False, topic_names=None, show_images=True
-    ):
+    def __init__(self, camera_names, is_debug=False, topic_names=None, show_images=True):
         print("Starting image recorder...")
         from collections import deque
-
         import rospy
         from cv_bridge import CvBridge
         from sensor_msgs.msg import Image
@@ -76,7 +71,7 @@ class ImageRecorderVideo:
         cameras: Union[dict, list],
         is_debug=False,
         image_shape=(480, 640, 3),
-        show_images=False,
+        show_images=True,
         fps=30,
     ):
         print("Starting image recorder...")
@@ -166,15 +161,7 @@ class ImageRecorderVideo:
             start_time = time.time()
             if self.show_images:
                 fps = 1 / (time.time() - fps_time)
-                cv2.putText(
-                    combined_frame,
-                    f"FPS: {fps:.2f}",
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0, 255, 0),
-                    2,
-                )
+                cv2.putText(combined_frame, f'FPS: {fps:.2f}', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                 cv2.imshow(window_name, combined_frame)
                 cv2.waitKey(1)
             start_time = time.time()
@@ -255,7 +242,6 @@ def calibrate_linear_vel(base_action: np.ndarray, c=None):
     base_action[..., 0] = v - c * w
     return base_action
 
-
 def smooth_base_action(base_action):
     return np.stack(
         [
@@ -264,7 +250,6 @@ def smooth_base_action(base_action):
         ],
         axis=-1,
     ).astype(np.float32)
-
 
 def postprocess_base_action(base_action):
     linear_vel, angular_vel = base_action
@@ -284,11 +269,3 @@ if __name__ == "__main__":
                 break
         else:
             time.sleep(1)
-
-
-def ping_ip(ip) -> bool:
-    response = os.system(f"ping -c 1 -w 2 {ip}")  # 对于Windows，使用 "ping -n 1 {ip}"
-    if response == 0:
-        return True
-    else:
-        return False

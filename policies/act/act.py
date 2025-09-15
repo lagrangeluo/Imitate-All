@@ -1,39 +1,24 @@
 import torch.nn as nn
-import torchvision.transforms as transforms
-from torch import Tensor
 from torch.nn import functional as F
-
-from policies.common.detr.main import (
-    build_ACT_model,
-    build_ACT_YHD_model,
-    build_optimizer,
-)
+import torchvision.transforms as transforms
+from detr.main import build_ACT_model, build_optimizer
 from policies.common.loss import kl_divergence
 from policies.common.wrapper import TemporalEnsembling
 
 
 class ACTPolicy(nn.Module):
-    def __init__(self, args_override, config=None):
+    def __init__(self, args_override):
         super().__init__()
-        if config is None:
-            model, self._args = build_ACT_model(args_override)
-        else:
-            model, self._args = build_ACT_YHD_model(config, args_override)
+        model, self._args = build_ACT_model(args_override)
         self.model = model  # CVAE decoder
         self.kl_weight = args_override["kl_weight"]
         print(f"KL Weight {self.kl_weight}")
         self.temporal_ensembler = None
-        try:
-            if args_override["temporal_agg"]:
-                self.temporal_ensembler = TemporalEnsembling(
-                    args_override["chunk_size"],
-                    args_override["action_dim"],
-                    args_override["max_timesteps"],
-                )
-        except Exception as e:
-            print(e)
-            print(
-                "The above Exception can be ignored when training instead of evaluating."
+        if args_override["temporal_agg"]:
+            self.temporal_ensembler = TemporalEnsembling(
+                args_override["chunk_size"],
+                args_override["action_dim"],
+                args_override["max_timesteps"],
             )
 
     # TODO: 使用装饰器在外部进行包装
@@ -42,19 +27,17 @@ class ACTPolicy(nn.Module):
             self.temporal_ensembler.reset()
 
     # TODO: 使用装饰器在外部进行包装
-    def __call__(self, qpos, image: Tensor, actions=None, is_pad=None):
+    def __call__(self, qpos, image, actions=None, is_pad=None):
         if image.ndim == 4:
-            image = image.unsqueeze(0)
+            image = image.unsqueeze(1)
         env_state = None
         # TODO: imagenet norm, move this outside
         normalize = transforms.Normalize(
             mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
         )
         image = normalize(image)
-        if actions is not None:  # training
+        if actions is not None:  # training time
             actions = actions[:, : self.model.num_queries]
-            # (batch_size, num_queries, action_dim)
-            # print(f"actions shape: {actions.shape}")
             assert is_pad is not None, "is_pad should not be None"
             is_pad = is_pad[:, : self.model.num_queries]
 
@@ -69,10 +52,13 @@ class ACTPolicy(nn.Module):
             loss_dict["kl"] = total_kld[0]
             loss_dict["loss"] = loss_dict["l1"] + loss_dict["kl"] * self.kl_weight
             return loss_dict
-        else:  # inference
-            # no action, sample from prior
-            a_hat, _, (_, _) = self.model(qpos, image, env_state)
-            if self.temporal_ensembler is not None:
+        else:  # inference time
+            a_hat, _, (_, _) = self.model(
+                qpos, image, env_state
+            )  # no action, sample from prior
+            if self.temporal_ensembler is None:
+                return a_hat
+            else:
                 a_hat_one = self.temporal_ensembler.update(a_hat)
                 a_hat[0][0] = a_hat_one
             return a_hat

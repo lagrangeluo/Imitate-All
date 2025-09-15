@@ -1,13 +1,11 @@
-import argparse
-import logging
 import os
-
+import numpy as np
 import cv2
 import h5py
+import argparse
 import matplotlib.pyplot as plt
-import numpy as np
-
 from data_process.convert_all import Compresser
+import logging
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,15 +24,13 @@ def load_hdf5(dataset_dir, dataset_name):
         qvel = None
         action = root["/action"][()]
         image_dict = dict()
-        for cam_name in root["/observations/images/"].keys():
+        for cam_name in root[f"/observations/images/"].keys():
             image_dict[cam_name] = root[f"/observations/images/{cam_name}"][()]
 
     return qpos, qvel, action, image_dict
 
 
 def save_videos(video, dt, video_path=None, swap_channel=False, decompress=False):
-    if not video:
-        return
     if isinstance(video, list):
         cam_names = list(video[0].keys())
         h, w, _ = video[0][cam_names[0]].shape
@@ -55,8 +51,9 @@ def save_videos(video, dt, video_path=None, swap_channel=False, decompress=False
         out.release()
         print(f"Saved video to: {video_path}")
     elif isinstance(video, dict):
+        cam_names = list(video.keys())
         all_cam_videos = []
-        for cam_name in video.keys():
+        for cam_name in cam_names:
             all_cam_videos.append(video[cam_name])
         all_cam_videos = np.concatenate(all_cam_videos, axis=2)  # width dimension
 
@@ -87,9 +84,7 @@ def visualize_joints(
     qpos = np.array(state_list)  # ts, dim
     action = np.array(action_list)
     if qpos.shape != action.shape:
-        logger.warning(
-            f"qpos and action have different shapes: {qpos.shape} vs {action.shape}"
-        )
+        logger.warning(f"qpos and action have different shapes: {qpos.shape} vs {action.shape}")
     num_ts, num_dim = qpos.shape
     h, w = 2, num_dim
     num_figs = num_dim
@@ -205,7 +200,7 @@ if __name__ == "__main__":
         "-sj",
         "--save_joints",
         action="store_true",
-        help="Save joint states and actions.",
+        help="Save joint states and acitons.",
     )
     parser.add_argument(
         "-od",

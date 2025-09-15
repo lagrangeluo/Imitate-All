@@ -1,8 +1,6 @@
-import logging
-import os
-from typing import List
-
+import logging, os
 import torch
+from typing import List
 
 
 def make_policy(
@@ -21,6 +19,12 @@ def post_init_policies(policies: List[torch.nn.Module], stage, ckpt_paths) -> No
         stage (str): "train" or "eval"
         ckpt_paths (List[str]): List of checkpoint paths
     """
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
     # https://pytorch.org/docs/stable/generated/torch.load.html
     weights_only = False
     for policy, ckpt_path in zip(policies, ckpt_paths):
@@ -28,23 +32,16 @@ def post_init_policies(policies: List[torch.nn.Module], stage, ckpt_paths) -> No
             if not os.path.exists(ckpt_path):
                 raise Exception(f"Checkpoint path does not exist: {ckpt_path}")
             if stage == "train":
-                loading_status = policy.load_state_dict(
-                    torch.load(ckpt_path, weights_only=weights_only)
-                )
-                logging.info(
-                    f"Resume policy from: {ckpt_path}, Status: {loading_status}"
-                )
+                loading_status = policy.load_state_dict(torch.load(ckpt_path, weights_only=weights_only))
+                logging.info(f'Resume policy from: {ckpt_path}, Status: {loading_status}')
             elif stage == "eval":
-                loading_status = policy.load_state_dict(
-                    torch.load(ckpt_path, weights_only=weights_only)
-                )
+                loading_status = policy.load_state_dict(torch.load(ckpt_path, weights_only=weights_only))
                 logging.info(loading_status)
                 logging.info(f"Loaded: {ckpt_path}")
-        policy.cuda()
+        policy.to(device)
 
         if stage == "eval":
             policy.eval()
-
 
 def save_model(policy, path):
     torch.save(policy.state_dict(), path)

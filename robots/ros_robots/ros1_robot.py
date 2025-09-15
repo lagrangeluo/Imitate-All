@@ -1,19 +1,11 @@
 from threading import Thread
 from typing import Dict
-
 import rospy
-from geometry_msgs.msg import Pose, PoseStamped
 from sensor_msgs.msg import JointState
-
-from data_process.convert_all import flatten_dict
-from robots.ros_robots.ros_robot_config import (
-    ACTIONS_TOPIC_CONFIG,
-    EEF_POSE_ORIENTATION,
-    EEF_POSE_POSITION,
-    EXAMPLE_CONFIG,
-    STATES_TOPIC_CONFIG,
-)
+from geometry_msgs.msg import Pose, PoseStamped
 from ros_tools import Lister
+from data_process.convert_all import flatten_dict
+from robots.ros_robots.ros_robot_config import EEF_POSE_POSITION, EEF_POSE_ORIENTATION, ACTIONS_TOPIC_CONFIG, STATES_TOPIC_CONFIG, EXAMPLE_CONFIG
 
 
 class AssembledROS1Robot(object):
